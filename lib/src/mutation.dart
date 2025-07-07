@@ -75,16 +75,14 @@ class Mutation<TData, TError, TVariables, TContext> {
         );
       case MutationDispatchAction.error:
         return state.copyWith(
-          error: data,
+          error: data as TError?,
           status: MutationStatus.error,
         );
       case MutationDispatchAction.success:
         return state.copyWith(
-          data: data,
+          data: data as TData?,
           status: MutationStatus.success,
         );
-      default:
-        return state;
     }
   }
 

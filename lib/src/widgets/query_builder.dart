@@ -1,15 +1,16 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:fquery/fquery.dart';
+import 'package:fquery/src/query.dart';
+import 'package:fquery/src/hooks/use_query.dart';
 import 'package:fquery/src/observer.dart';
 import 'package:fquery/src/query_key.dart';
+import 'package:fquery/src/create_query.dart';
 
-class QueryBuilder<TData, TError, TSelected> extends HookWidget {
-  final Widget Function(BuildContext, UseQueryResult<TData, TError, TSelected>) builder;
+class QueryBuilder<TData, TError> extends HookWidget {
+  final Widget Function(BuildContext, UseQueryResult<TData, TError, TData>) builder;
   final RawQueryKey queryKey;
   final QueryFn<TData> queryFn;
   final bool enabled;
-  final TSelected Function(TData)? select;
 
   final RefetchOnMount? refetchOnMount;
   final Duration? staleDuration;
@@ -24,7 +25,6 @@ class QueryBuilder<TData, TError, TSelected> extends HookWidget {
     super.key,
     required this.builder,
     this.enabled = true,
-    this.select,
     this.refetchOnMount,
     this.staleDuration,
     this.cacheDuration,
@@ -35,30 +35,20 @@ class QueryBuilder<TData, TError, TSelected> extends HookWidget {
 
   @override
   Widget build(BuildContext context) {
-    final query = select != null
-        ? useQueryWithSelect<TData, TError, TSelected>(
-            queryKey,
-            queryFn,
-            cacheDuration: cacheDuration,
-            enabled: enabled,
-            refetchInterval: refetchInterval,
-            refetchOnMount: refetchOnMount,
-            staleDuration: staleDuration,
-            retryCount: retryCount,
-            retryDelay: retryDelay,
-            select: select,
-          )
-        : useQuery<TData, TError>(
-            queryKey,
-            queryFn,
-            cacheDuration: cacheDuration,
-            enabled: enabled,
-            refetchInterval: refetchInterval,
-            refetchOnMount: refetchOnMount,
-            staleDuration: staleDuration,
-            retryCount: retryCount,
-            retryDelay: retryDelay,
-          ) as UseQueryResult<TData, TError, TSelected>;
+    // Create QueryConfig from the provided parameters
+    final queryConfig = QueryConfig<TData>(
+      queryKey: queryKey,
+      fetcher: queryFn,
+      enabled: enabled,
+      refetchOnMount: refetchOnMount,
+      staleDuration: staleDuration,
+      cacheDuration: cacheDuration,
+      refetchInterval: refetchInterval,
+      retryCount: retryCount,
+      retryDelay: retryDelay,
+    );
+    
+    final query = useQuery<TData, TError>(queryConfig);
 
     return Builder(builder: (context) {
       return builder(context, query);

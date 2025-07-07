@@ -1,8 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:fquery/fquery.dart';
+import 'package:fquery/src/query.dart';
 import 'package:fquery/src/observer.dart';
 import 'package:fquery/src/query_key.dart';
+import 'package:fquery/src/hooks/use_query_client.dart';
+import 'package:fquery/src/create_query.dart' show QueryConfig;
 
 class UseQueryResult<TData, TError, TSelected> {
   final TSelected? data;
@@ -55,22 +57,27 @@ class UseQueryOptions<TData, TError> {
 }
 
 /// Builds and subscribes to a query stored in the cache.
-/// Takes a query key and a fetcher function which either resolves or throws an error.
+/// Takes a QueryConfig object created with createQuery().
 /// Returns a [UseQueryResult]
 ///
 /// Example:
 /// ```dart
-/// // These are default configurations
-/// final posts = useQuery(
+/// // Create query configuration with options:
+/// final postsQuery = createQuery(
 ///   ['posts'],
 ///   getPosts,
 ///   enabled: true,
-///   cacheDuration: const Duration(minutes: 5),
-///   refetchInterval: null // The query will not refetch by default,
 ///   refetchOnMount: RefetchOnMount.stale,
 ///   staleDuration: const Duration(seconds: 10),
+///   cacheDuration: const Duration(minutes: 5),
+///   refetchInterval: const Duration(seconds: 30),
 /// );
+/// 
+/// // Use the query:
+/// final posts = useQuery(postsQuery);
 /// ```
+/// 
+/// Query options are now configured in createQuery:
 /// - `enabled` - specifies if the query fetcher function is automatically called when the widget renders, can be used for _dependent queries_.
 /// - `cacheDuration` - specifies the duration unused/inactive cache data remains in memory; the cached data will be garbage collected after this duration. The longest duration will be used when different values are specified in multiple instances of the query.
 /// - `refetchInterval` - specifies the time interval in which all queries will refetch the data, setting it to `null` (default) will turn off refetching
@@ -81,6 +88,23 @@ class UseQueryOptions<TData, TError> {
 /// - `staleDuration` - specifies the duration until the data becomes stale. This value applies to each query instance individually.
 
 UseQueryResult<TData, TError, TData> useQuery<TData, TError>(
+  QueryConfig<TData> queryConfig,
+) {
+  return _useQueryImpl<TData, TError>(
+    queryConfig.queryKey,
+    queryConfig.fetcher,
+    enabled: queryConfig.enabled,
+    refetchOnMount: queryConfig.refetchOnMount,
+    staleDuration: queryConfig.staleDuration,
+    cacheDuration: queryConfig.cacheDuration,
+    refetchInterval: queryConfig.refetchInterval,
+    retryCount: queryConfig.retryCount,
+    retryDelay: queryConfig.retryDelay,
+  );
+}
+
+// Alias for internal use - now creates a QueryConfig internally
+UseQueryResult<TData, TError, TData> useQueryBase<TData, TError>(
   RawQueryKey queryKey,
   QueryFn<TData> fetcher, {
   // These options must match with the `UseQueryOptions`
@@ -92,9 +116,9 @@ UseQueryResult<TData, TError, TData> useQuery<TData, TError>(
   int? retryCount,
   Duration? retryDelay,
 }) {
-  return useQueryWithSelect<TData, TError, TData>(
-    queryKey,
-    fetcher,
+  final config = QueryConfig<TData>(
+    queryKey: queryKey,
+    fetcher: fetcher,
     enabled: enabled,
     refetchOnMount: refetchOnMount,
     staleDuration: staleDuration,
@@ -102,22 +126,21 @@ UseQueryResult<TData, TError, TData> useQuery<TData, TError>(
     refetchInterval: refetchInterval,
     retryCount: retryCount,
     retryDelay: retryDelay,
-    select: null,
   );
+  return useQuery<TData, TError>(config);
 }
 
-UseQueryResult<TData, TError, TSelected> useQueryWithSelect<TData, TError, TSelected>(
+// Internal implementation
+UseQueryResult<TData, TError, TData> _useQueryImpl<TData, TError>(
   RawQueryKey queryKey,
   QueryFn<TData> fetcher, {
-  // These options must match with the `UseQueryOptions`
-  bool enabled = true,
+  required bool enabled,
   RefetchOnMount? refetchOnMount,
   Duration? staleDuration,
   Duration? cacheDuration,
   Duration? refetchInterval,
   int? retryCount,
   Duration? retryDelay,
-  TSelected Function(TData)? select,
 }) {
   final options = useMemoized(
     () => UseQueryOptions<TData, TError>(
@@ -192,17 +215,8 @@ UseQueryResult<TData, TError, TSelected> useQueryWithSelect<TData, TError, TSele
     };
   }, [observer]);
 
-  // Apply select transformation if provided
-  final selectedData = useMemoized(() {
-    final rawData = observer.query.state.data;
-    if (rawData != null && select != null) {
-      return select(rawData);
-    }
-    return rawData as TSelected?;
-  }, [observer.query.state.data, select]);
-
-  return UseQueryResult<TData, TError, TSelected>(
-    data: selectedData,
+  return UseQueryResult<TData, TError, TData>(
+    data: observer.query.state.data,
     dataUpdatedAt: observer.query.state.dataUpdatedAt,
     error: observer.query.state.error,
     errorUpdatedAt: observer.query.state.errorUpdatedAt,

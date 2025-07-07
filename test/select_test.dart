@@ -32,36 +32,41 @@ void main() {
           child: MaterialApp(
             home: HookBuilder(
               builder: (context) {
-                // Test selecting just names
-                final names = useQueryWithSelect<List<TestData>, Exception, List<String>>(
+                // Create query config for test data
+                final testDataQuery = createQuery(
                   ['test-data'],
                   () async => testData,
-                  select: (data) => data.map((item) => item.name).toList(),
                 );
+                
+                // Get raw data
+                final rawData = useQuery<List<TestData>, Exception>(testDataQuery);
+                
+                // Test selecting just names
+                final names = useMemoized(() {
+                  if (rawData.data != null) {
+                    return rawData.data!.map((item) => item.name).toList();
+                  }
+                  return null;
+                }, [rawData.data]);
 
                 // Test selecting sum of values
-                final sum = useQueryWithSelect<List<TestData>, Exception, int>(
-                  ['test-data'],
-                  () async => testData,
-                  select: (data) => data.fold(0, (sum, item) => sum + item.value),
-                );
+                final sum = useMemoized(() {
+                  if (rawData.data != null) {
+                    return rawData.data!.fold(0, (sum, item) => sum + item.value);
+                  }
+                  return null;
+                }, [rawData.data]);
 
-                // Test without select (backward compatibility)
-                final rawData = useQuery<List<TestData>, Exception>(
-                  ['test-data'],
-                  () async => testData,
-                );
-
-                if (names.isLoading || sum.isLoading || rawData.isLoading) {
+                if (rawData.isLoading) {
                   return const CircularProgressIndicator();
                 }
 
                 return Column(
                   children: [
-                    if (names.data != null)
-                      Text('Names: ${names.data!.join(', ')}'),
-                    if (sum.data != null)
-                      Text('Sum: ${sum.data}'),
+                    if (names != null)
+                      Text('Names: ${names.join(', ')}'),
+                    if (sum != null)
+                      Text('Sum: $sum'),
                     if (rawData.data != null)
                       Text('Raw count: ${rawData.data!.length}'),
                   ],
@@ -91,20 +96,26 @@ void main() {
           child: MaterialApp(
             home: HookBuilder(
               builder: (context) {
-                final result = useQueryWithSelect<TestData, Exception, String>(
+                final memoQuery = createQuery(
                   ['memo-test'],
                   () async => testData,
-                  select: (data) {
-                    selectCallCount++;
-                    return data.name.toUpperCase();
-                  },
                 );
+                
+                final result = useQuery<TestData, Exception>(memoQuery);
+                
+                final selectedData = useMemoized(() {
+                  if (result.data != null) {
+                    selectCallCount++;
+                    return result.data!.name.toUpperCase();
+                  }
+                  return null;
+                }, [result.data]);
 
                 if (result.isLoading) {
                   return const CircularProgressIndicator();
                 }
 
-                return Text(result.data ?? 'No data');
+                return Text(selectedData ?? 'No data');
               },
             ),
           ),
@@ -123,7 +134,7 @@ void main() {
       expect(selectCallCount, 1);
     });
 
-    testWidgets('QueryBuilder with select works', (tester) async {
+    testWidgets('QueryBuilder works without select', (tester) async {
       final testData = [
         TestData(id: 1, name: 'Item 1', value: 100),
         TestData(id: 2, name: 'Item 2', value: 200),
@@ -133,14 +144,9 @@ void main() {
         QueryClientProvider(
           queryClient: queryClient,
           child: MaterialApp(
-            home: QueryBuilder<List<TestData>, Exception, Map<String, dynamic>>(
+            home: QueryBuilder<List<TestData>, Exception>(
               ['builder-test'],
               () async => testData,
-              select: (data) => {
-                'count': data.length,
-                'totalValue': data.fold<int>(0, (sum, item) => sum + item.value),
-                'names': data.map((item) => item.name).toList(),
-              },
               builder: (context, query) {
                 if (query.isLoading) {
                   return const CircularProgressIndicator();
@@ -150,9 +156,9 @@ void main() {
                   final data = query.data!;
                   return Column(
                     children: [
-                      Text('Count: ${data['count']}'),
-                      Text('Total: ${data['totalValue']}'),
-                      Text('Names: ${(data['names'] as List).join(', ')}'),
+                      Text('Count: ${data.length}'),
+                      Text('Total: ${data.fold<int>(0, (sum, item) => sum + item.value)}'),
+                      Text('Names: ${data.map((item) => item.name).join(', ')}'),
                     ],
                   );
                 }

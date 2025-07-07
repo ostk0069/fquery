@@ -84,7 +84,7 @@ class Query<TData, TError> with Removable {
           isFetching: true,
           status:
               state.dataUpdatedAt == null ? QueryStatus.loading : state.status,
-          fetchMeta: data,
+          fetchMeta: data as FetchMeta?,
         );
       case DispatchAction.cancelFetch:
         return state.copyWith(
@@ -132,8 +132,7 @@ class Query<TData, TError> with Removable {
           isInvalidated: false,
           fetchMeta: null,
         );
-      default:
-        return state;
+      // All cases are handled, no default needed
     }
   }
 

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 part 'query_state.freezed.dart';
 
 @freezed
-class QueryState<TData, TError> with _$QueryState<TData, TError> {
+abstract class QueryState<TData, TError> with _$QueryState<TData, TError> {
   const QueryState._();
 
   bool get isLoading => status == QueryStatus.loading;

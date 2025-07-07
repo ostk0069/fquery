@@ -16,12 +16,19 @@ class TodosPage extends HookWidget {
     final client = useQueryClient();
     final isEnabled = useState(true);
     final todosAPI = TodosAPI.getInstance();
-    final todos = useQuery(
-      ['todos'],
-      todosAPI.getAll,
-      refetchOnMount: RefetchOnMount.never,
-      enabled: isEnabled.value,
+    
+    // Create query configuration with reactive enabled option
+    final todosQuery = useMemoized(
+      () => createQuery(
+        ['todos'],
+        todosAPI.getAll,
+        enabled: isEnabled.value,
+        refetchOnMount: RefetchOnMount.never,
+      ),
+      [isEnabled.value],
     );
+    
+    final todos = useQuery(todosQuery);
     final todoInputController = useTextEditingController();
     final addTodoMutation = useMutation<Todo, Exception, String, List<Todo>>(
         todosAPI.add, onMutate: (text) async {
@@ -94,7 +101,7 @@ class TodosPage extends HookWidget {
         ),
       ),
       child: SafeArea(
-        child: QueryBuilder<List<Todo>, dynamic, List<Todo>>(
+        child: QueryBuilder<List<Todo>, dynamic>(
           const ['todos'],
           todosAPI.getAll,
           refetchOnMount: RefetchOnMount.never,
