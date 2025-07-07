@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:fquery/src/query.dart';
-import 'package:fquery/src/observer.dart';
-import 'package:fquery/src/query_key.dart';
-import 'package:fquery/src/hooks/use_query_client.dart';
 import 'package:fquery/src/create_query.dart' show QueryConfig;
+import 'package:fquery/src/hooks/use_query_client.dart';
+import 'package:fquery/src/observer.dart';
+import 'package:fquery/src/query.dart';
+import 'package:fquery/src/query_key.dart';
 
 class UseQueryResult<TData, TError, TSelected> {
   final TSelected? data;
@@ -72,11 +72,11 @@ class UseQueryOptions<TData, TError> {
 ///   cacheDuration: const Duration(minutes: 5),
 ///   refetchInterval: const Duration(seconds: 30),
 /// );
-/// 
+///
 /// // Use the query:
 /// final posts = useQuery(postsQuery);
 /// ```
-/// 
+///
 /// Query options are now configured in createQuery:
 /// - `enabled` - specifies if the query fetcher function is automatically called when the widget renders, can be used for _dependent queries_.
 /// - `cacheDuration` - specifies the duration unused/inactive cache data remains in memory; the cached data will be garbage collected after this duration. The longest duration will be used when different values are specified in multiple instances of the query.
@@ -88,18 +88,25 @@ class UseQueryOptions<TData, TError> {
 /// - `staleDuration` - specifies the duration until the data becomes stale. This value applies to each query instance individually.
 
 UseQueryResult<TData, TError, TData> useQuery<TData, TError>(
-  QueryConfig<TData> queryConfig,
-) {
+  QueryConfig<TData> queryConfig, {
+  bool enabled = true,
+  RefetchOnMount? refetchOnMount,
+  Duration? staleDuration,
+  Duration? cacheDuration,
+  Duration? refetchInterval,
+  int? retryCount,
+  Duration? retryDelay,
+}) {
   return _useQueryImpl<TData, TError>(
     queryConfig.queryKey,
     queryConfig.fetcher,
-    enabled: queryConfig.enabled,
-    refetchOnMount: queryConfig.refetchOnMount,
-    staleDuration: queryConfig.staleDuration,
-    cacheDuration: queryConfig.cacheDuration,
-    refetchInterval: queryConfig.refetchInterval,
-    retryCount: queryConfig.retryCount,
-    retryDelay: queryConfig.retryDelay,
+    enabled: enabled,
+    refetchOnMount: refetchOnMount,
+    staleDuration: staleDuration,
+    cacheDuration: cacheDuration,
+    refetchInterval: refetchInterval,
+    retryCount: retryCount,
+    retryDelay: retryDelay,
   );
 }
 

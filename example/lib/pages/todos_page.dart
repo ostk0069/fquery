@@ -1,12 +1,15 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 
 import 'dart:math';
-import 'package:basic/widgets/todo_list_tile.dart';
-import 'package:basic/models/todos.dart';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:fquery/fquery.dart';
+
+import '../models/todos.dart';
+import '../queries/todos_query.dart';
+import '../widgets/todo_list_tile.dart';
 
 class TodosPage extends HookWidget {
   const TodosPage({Key? key}) : super(key: key);
@@ -16,19 +19,12 @@ class TodosPage extends HookWidget {
     final client = useQueryClient();
     final isEnabled = useState(true);
     final todosAPI = TodosAPI.getInstance();
-    
-    // Create query configuration with reactive enabled option
-    final todosQuery = useMemoized(
-      () => createQuery(
-        ['todos'],
-        todosAPI.getAll,
-        enabled: isEnabled.value,
-        refetchOnMount: RefetchOnMount.never,
-      ),
-      [isEnabled.value],
+
+    final todos = useQuery(
+      todosQuery,
+      enabled: isEnabled.value,
+      refetchOnMount: RefetchOnMount.never,
     );
-    
-    final todos = useQuery(todosQuery);
     final todoInputController = useTextEditingController();
     final addTodoMutation = useMutation<Todo, Exception, String, List<Todo>>(
         todosAPI.add, onMutate: (text) async {
