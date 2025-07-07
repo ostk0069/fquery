@@ -205,6 +205,48 @@ final posts = useQuery(
 - `retryCount` - specifies the number of times the query will retry before showing an error
 - `retryDelay` - specifies the delay between each retry
 
+### Data Transformation with Select
+
+The `select` option allows you to transform or pick a part of the data returned by the query function. This is useful when you want to:
+- Extract specific fields from complex data structures
+- Compute derived values from the raw data
+- Optimize re-renders by selecting only the data your component needs
+
+```dart
+// Example 1: Extract only titles from posts
+final postTitles = useQueryWithSelect<List<Post>, Exception, List<String>>(
+  ['posts'],
+  getPosts,
+  select: (posts) => posts.map((post) => post.title).toList(),
+);
+
+// Example 2: Calculate derived data
+final postStats = useQueryWithSelect<List<Post>, Exception, Map<String, dynamic>>(
+  ['posts'],
+  getPosts,
+  select: (posts) => {
+    'count': posts.length,
+    'byUser': posts.groupBy((p) => p.userId),
+    'latest': posts.isNotEmpty ? posts.last : null,
+  },
+);
+
+// Example 3: Using with QueryBuilder
+QueryBuilder<List<Post>, Exception, int>(
+  ['posts'],
+  getPosts,
+  select: (posts) => posts.length,
+  builder: (context, query) {
+    if (query.isSuccess) {
+      return Text('Total posts: ${query.data}');
+    }
+    return CircularProgressIndicator();
+  },
+)
+```
+
+The `select` function is memoized, so it will only re-run when the query data changes.
+
 ### Dependent Query
 
 A dependent query is a query that depends on another variable for execution, or even any other query. Probably you want to run a query only after some other query, or data in a query that you don't have, e.g. a `Future`, or to fetch data only when a variable takes a certain value, e.g. a `bool` like `isAuthenticated`, for all of this or similar, dependent query can ease your load. To use this, simply pass the `enabled` option.

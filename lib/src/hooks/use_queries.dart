@@ -23,7 +23,7 @@ class UseQueriesOptions<TData, TError> extends UseQueryOptions<TData, TError> {
   });
 }
 
-List<UseQueryResult<TData, TError>> useQueries<TData, TError>(
+List<UseQueryResult<TData, TError, TData>> useQueries<TData, TError>(
   List<UseQueriesOptions<TData, TError>> options,
 ) {
   final client = useQueryClient();
@@ -48,7 +48,7 @@ List<UseQueryResult<TData, TError>> useQueries<TData, TError>(
 
   return observer.observers
       .map(
-        (observer) => UseQueryResult(
+        (observer) => UseQueryResult<TData, TError, TData>(
           data: observer.query.state.data,
           dataUpdatedAt: observer.query.state.dataUpdatedAt,
           error: observer.query.state.error,

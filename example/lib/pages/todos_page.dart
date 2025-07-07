@@ -94,7 +94,7 @@ class TodosPage extends HookWidget {
         ),
       ),
       child: SafeArea(
-        child: QueryBuilder<List<Todo>, dynamic>(
+        child: QueryBuilder<List<Todo>, dynamic, List<Todo>>(
           const ['todos'],
           todosAPI.getAll,
           refetchOnMount: RefetchOnMount.never,

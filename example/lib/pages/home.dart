@@ -35,6 +35,7 @@ class Home extends HookWidget {
             HomeListTile(title: "Todos", route: "/todos"),
             HomeListTile(title: "Posts", route: "/posts"),
             HomeListTile(title: "Infinity", route: "/infinity"),
+            HomeListTile(title: "Select Example", route: "/select"),
           ],
         ));
   }

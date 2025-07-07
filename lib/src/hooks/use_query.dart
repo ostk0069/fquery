@@ -4,8 +4,8 @@ import 'package:fquery/fquery.dart';
 import 'package:fquery/src/observer.dart';
 import 'package:fquery/src/query_key.dart';
 
-class UseQueryResult<TData, TError> {
-  final TData? data;
+class UseQueryResult<TData, TError, TSelected> {
+  final TSelected? data;
   final DateTime? dataUpdatedAt;
   final TError? error;
   final DateTime? errorUpdatedAt;
@@ -80,7 +80,7 @@ class UseQueryOptions<TData, TError> {
 ///   - `RefetchOnMount.never` - will never refetch.
 /// - `staleDuration` - specifies the duration until the data becomes stale. This value applies to each query instance individually.
 
-UseQueryResult<TData, TError> useQuery<TData, TError>(
+UseQueryResult<TData, TError, TData> useQuery<TData, TError>(
   RawQueryKey queryKey,
   QueryFn<TData> fetcher, {
   // These options must match with the `UseQueryOptions`
@@ -91,6 +91,33 @@ UseQueryResult<TData, TError> useQuery<TData, TError>(
   Duration? refetchInterval,
   int? retryCount,
   Duration? retryDelay,
+}) {
+  return useQueryWithSelect<TData, TError, TData>(
+    queryKey,
+    fetcher,
+    enabled: enabled,
+    refetchOnMount: refetchOnMount,
+    staleDuration: staleDuration,
+    cacheDuration: cacheDuration,
+    refetchInterval: refetchInterval,
+    retryCount: retryCount,
+    retryDelay: retryDelay,
+    select: null,
+  );
+}
+
+UseQueryResult<TData, TError, TSelected> useQueryWithSelect<TData, TError, TSelected>(
+  RawQueryKey queryKey,
+  QueryFn<TData> fetcher, {
+  // These options must match with the `UseQueryOptions`
+  bool enabled = true,
+  RefetchOnMount? refetchOnMount,
+  Duration? staleDuration,
+  Duration? cacheDuration,
+  Duration? refetchInterval,
+  int? retryCount,
+  Duration? retryDelay,
+  TSelected Function(TData)? select,
 }) {
   final options = useMemoized(
     () => UseQueryOptions<TData, TError>(
@@ -165,8 +192,17 @@ UseQueryResult<TData, TError> useQuery<TData, TError>(
     };
   }, [observer]);
 
-  return UseQueryResult<TData, TError>(
-    data: observer.query.state.data,
+  // Apply select transformation if provided
+  final selectedData = useMemoized(() {
+    final rawData = observer.query.state.data;
+    if (rawData != null && select != null) {
+      return select(rawData);
+    }
+    return rawData as TSelected?;
+  }, [observer.query.state.data, select]);
+
+  return UseQueryResult<TData, TError, TSelected>(
+    data: selectedData,
     dataUpdatedAt: observer.query.state.dataUpdatedAt,
     error: observer.query.state.error,
     errorUpdatedAt: observer.query.state.errorUpdatedAt,

@@ -3,6 +3,7 @@
 import 'package:basic/pages/home.dart';
 import 'package:basic/pages/infinity_page.dart';
 import 'package:basic/pages/posts_page.dart';
+import 'package:basic/pages/select_example.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:fquery/fquery.dart';
 
@@ -36,6 +37,7 @@ class App extends StatelessWidget {
           '/todos': (context) => const TodosPage(),
           '/posts': (context) => const PostsPage(),
           '/infinity': (context) => const InfinityPage(),
+          '/select': (context) => const SelectExamplePage(),
         },
       ),
     );
