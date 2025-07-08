@@ -1,59 +1,67 @@
-import 'package:basic/models/post.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fquery/fquery.dart';
 
-import '../helpers/query_test_helpers.dart';
+import 'query_test_helpers.dart';
 
-void main() {
+/// Configuration for a query test suite
+class QueryTestConfig<T> {
+  final String groupName;
+  final QueryConfig<T> query;
+  final String countLabel;
+  final int expectedCount;
+  final String firstItemText;
+  final Widget Function(T data) buildDataWidget;
+  final Widget Function(T data) buildRefetchWidget;
+  final List<QueryTestCase<T>>? additionalTests;
+
+  const QueryTestConfig({
+    required this.groupName,
+    required this.query,
+    required this.countLabel,
+    required this.expectedCount,
+    required this.firstItemText,
+    required this.buildDataWidget,
+    required this.buildRefetchWidget,
+    this.additionalTests,
+  });
+}
+
+/// Individual test case configuration
+class QueryTestCase<T> {
+  final String name;
+  final Future<void> Function(WidgetTester tester, QueryClient queryClient) test;
+  final bool skip;
+
+  const QueryTestCase({
+    required this.name,
+    required this.test,
+    this.skip = false,
+  });
+}
+
+/// Generate a complete test suite for a query
+void generateQueryTestSuite<T>(QueryTestConfig<T> config) {
   late QueryClient queryClient;
-  late QueryConfig<List<Post>> testPostsQuery;
 
   setUp(() {
     queryClient = QueryClient();
-    testPostsQuery = createQuery<List<Post>>(
-      ['posts'],
-      () async {
-        // Simulate delay
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        return [
-          Post(
-            userId: 1,
-            id: 1,
-            title: 'Test Post Title',
-            body: 'Test Post Body',
-          ),
-          Post(
-            userId: 1,
-            id: 2,
-            title: 'Another Test Post',
-            body: 'Another Test Body',
-          ),
-        ];
-      },
-    );
   });
 
   tearDown(() {
     // QueryClient doesn't have dispose method
   });
 
-  group('postsQuery', () {
-    testWidgets('should fetch posts successfully', (tester) async {
+  group(config.groupName, () {
+    testWidgets('should fetch ${config.groupName} successfully', (tester) async {
       await tester.pumpWidget(
         QueryTestHelper.buildTestApp(
           queryClient: queryClient,
           child: QueryTestHelper.buildQueryTest(
-            query: testPostsQuery,
+            query: config.query,
             builder: (context, result) {
               return result.toTestWidget(
-                data: (List<Post> posts) => Column(
-                  children: [
-                    Text('Posts count: ${posts.length}'),
-                    if (posts.isNotEmpty) Text(posts.first.title),
-                  ],
-                ),
+                data: config.buildDataWidget,
               );
             },
           ),
@@ -66,9 +74,9 @@ void main() {
       await QueryTestHelper.waitForQuery(tester,
           delay: const Duration(milliseconds: 200));
 
-      // Verify that posts were fetched
-      expect(find.text('Posts count: 2'), findsOneWidget);
-      expect(find.text('Test Post Title'), findsOneWidget);
+      // Verify data was fetched
+      expect(find.text('${config.countLabel}: ${config.expectedCount}'), findsOneWidget);
+      expect(find.text(config.firstItemText), findsOneWidget);
     });
 
     testWidgets('should respect enabled option', skip: true, (tester) async {
@@ -76,7 +84,7 @@ void main() {
         QueryTestHelper.buildTestApp(
           queryClient: queryClient,
           child: QueryTestHelper.buildQueryTest(
-            query: testPostsQuery,
+            query: config.query,
             options: const QueryOptions(enabled: false),
             builder: (context, result) {
               return Column(
@@ -104,7 +112,7 @@ void main() {
         QueryTestHelper.buildTestApp(
           queryClient: queryClient,
           child: QueryTestHelper.buildRefetchTest(
-            query: testPostsQuery,
+            query: config.query,
             builder: (context, result, setRefetch) {
               refetchFn = () => result.refetch();
 
@@ -117,13 +125,7 @@ void main() {
                 );
               }
 
-              final posts = result.data as List<Post>;
-              return Column(
-                children: [
-                  Text('Posts count: ${posts.length}'),
-                  Text('Is Fetching: ${result.isFetching}'),
-                ],
-              );
+              return config.buildRefetchWidget(result.data as T);
             },
           ),
         ),
@@ -135,7 +137,7 @@ void main() {
       await QueryTestHelper.waitForQuery(tester,
           delay: const Duration(milliseconds: 200));
 
-      expect(find.text('Posts count: 2'), findsOneWidget);
+      expect(find.text('${config.countLabel}: ${config.expectedCount}'), findsOneWidget);
       expect(find.text('Is Fetching: false'), findsOneWidget);
 
       // Trigger refetch
@@ -148,8 +150,17 @@ void main() {
       await QueryTestHelper.waitForQuery(tester,
           delay: const Duration(milliseconds: 200));
 
-      expect(find.text('Posts count: 2'), findsOneWidget);
+      expect(find.text('${config.countLabel}: ${config.expectedCount}'), findsOneWidget);
       expect(find.text('Is Fetching: false'), findsOneWidget);
     });
+
+    // Add any additional tests
+    if (config.additionalTests != null) {
+      for (final testCase in config.additionalTests!) {
+        testWidgets(testCase.name, skip: testCase.skip, (tester) async {
+          await testCase.test(tester, queryClient);
+        });
+      }
+    }
   });
 }
