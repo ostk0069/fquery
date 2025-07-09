@@ -19,6 +19,8 @@ analyzer:
     strict-casts: true
     strict-inference: true
     strict-raw-types: true
+  plugins:
+    - custom_lint
 
 # Uncomment the following section to specify additional rules.
 
